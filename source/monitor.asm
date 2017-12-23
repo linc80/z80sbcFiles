@@ -73,6 +73,11 @@ SIOA_C		.EQU	$02
 SIOB_D		.EQU	$01
 SIOB_C		.EQU	$03
 
+CTC_CH0		.EQU	$08
+CTC_CH1		.EQU	$09
+CTC_STOP	.EQU	$03
+CTC_CMODE	.EQU	$55
+
 		.ORG	$4000
 serABuf		.ds	SER_BUFSIZE
 serAInPtr	.ds	2
@@ -398,31 +403,44 @@ INIT		LD   SP,STACK		; Set the Stack Pointer
 		LD	(serABufUsed),A
 		LD	(serBBufUsed),A
 
+;	Initialise CTC
+		LD 	A,CTC_STOP
+		OUT 	(CTC_CH0),A
+		OUT 	(CTC_CH1),A
+
+		LD 	A,CTC_CMODE
+		OUT 	(CTC_CH0),A
+		LD 	A,24			; 2  = 115200, 4  = 57600, 
+						; 6  = 38400, 12 = 19200, 
+						; 24 = 9600, 48 = 4800, 
+						; 96 = 1200, 192 = 600
+		OUT 	(CTC_CH0),A
+
 ;	Initialise SIO
 
-		LD	A,$00
+		LD	A,$00			; WR0
 		OUT	(SIOA_C),A
-		LD	A,$18
-		OUT	(SIOA_C),A
-
-		LD	A,$04
-		OUT	(SIOA_C),A
-		LD	A,$C4
+		LD	A,$18			; Reset Channel
 		OUT	(SIOA_C),A
 
-		LD	A,$01
+		LD	A,$04			; WR4
 		OUT	(SIOA_C),A
-		LD	A,$18
-		OUT	(SIOA_C),A
-
-		LD	A,$03
-		OUT	(SIOA_C),A
-		LD	A,$E1
+		LD	A,$44			; x16, 1 stop bit
 		OUT	(SIOA_C),A
 
-		LD	A,$05
+		LD	A,$01			; WR1
 		OUT	(SIOA_C),A
-		LD	A,RTS_LOW
+		LD	A,$18			; Int on ALL RX, vetor not modified
+		OUT	(SIOA_C),A
+
+		LD	A,$03			; WR3
+		OUT	(SIOA_C),A
+		LD	A,$E1			; 8bit/char. Auto enable. Receiver enable
+		OUT	(SIOA_C),A
+
+		LD	A,$05			; WR5
+		OUT	(SIOA_C),A
+		LD	A,RTS_LOW		; Set RTS Low, we are RTS on Channel A
 		OUT	(SIOA_C),A
 
 		LD	A,$00
@@ -868,8 +886,9 @@ cfWait1:
 
 ;------------------------------------------------------------------------------
 
-SIGNON	.BYTE	"Z80 SBC Boot ROM 1.1"
-		.BYTE	" by G. Searle"
+SIGNON	.BYTE	"Z80 SBC Boot ROM 1.1+"
+		.BYTE	" by G. Searle,"
+		.BYTE   " modified by J. Langseth"
 		.BYTE	$0D,$0A
 		.BYTE	"Type ? for options"
 		.BYTE	$0D,$0A,$00
