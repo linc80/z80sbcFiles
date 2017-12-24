@@ -174,57 +174,20 @@ boot:
 		LD	A,$01
 		OUT ($38),A
 
-;	Initialise SIO
-
-		LD	A,$00
-		OUT	(SIOA_C),A
-		LD	A,$18
-		OUT	(SIOA_C),A
-
-		LD	A,$04
-		OUT	(SIOA_C),A
-		LD	A,$C4
-		OUT	(SIOA_C),A
-
-		LD	A,$01
-		OUT	(SIOA_C),A
-		LD	A,$18
-		OUT	(SIOA_C),A
-	
-		LD	A,$03
-		OUT	(SIOA_C),A
-		LD	A,$E1
-		OUT	(SIOA_C),A
-
-		LD	A,$05
-		OUT	(SIOA_C),A
-		LD	A,RTS_LOW
-		OUT	(SIOA_C),A
-
-		LD	A,$00
-		OUT	(SIOB_C),A
-		LD	A,$18
-		OUT	(SIOB_C),A
-
-		LD	A,$04
-		OUT	(SIOB_C),A
-		LD	A,$C4
-		OUT	(SIOB_C),A
-
-		LD	A,$01
-		OUT	(SIOB_C),A
-		LD	A,$18
-		OUT	(SIOB_C),A
+;		SIO was previously initialized by monitor ROM,
+;		so all that's really needed here is to set a new
+;		interrupt vector address.
 
 		LD	A,$02
 		OUT	(SIOB_C),A
 		LD	A,$E0		; INTERRUPT VECTOR ADDRESS
 		OUT	(SIOB_C),A
 	
-		LD	A,$03
-		OUT	(SIOB_C),A
-		LD	A,$E1
-		OUT	(SIOB_C),A
+;		Ensure that RTS is LOW on both ports
+		LD	A,$05
+		OUT	(SIOA_C),A
+		LD	A,RTS_LOW
+		OUT	(SIOA_C),A
 
 		LD	A,$05
 		OUT	(SIOB_C),A
@@ -237,7 +200,7 @@ boot:
 
 		CALL	printInline
 		.DB FF
-		.TEXT "Z80 CP/M BIOS 1.0 by G. Searle 2007-13"
+		.TEXT "LiNC80 CP/M BIOS 1.1 by G. Searle 2007-17"
 		.DB CR,LF
 		.DB CR,LF
 		.TEXT "CP/M 2.2 "
