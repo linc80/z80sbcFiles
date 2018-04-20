@@ -39,6 +39,14 @@ SIOA_C		.EQU	$02
 SIOB_D		.EQU	$01
 SIOB_C		.EQU	$03
 
+CTC_CH0		.EQU	$08
+CTC_CH1		.EQU	$09
+CTC_CH2		.EQU	$0A
+CTC_CH3		.EQU	$0B
+CTC_STOP	.EQU	$03
+CTC_CMODE	.EQU	$55		; Counter mode, Constant follows
+CTC_TMODE	.EQU	$35		; Timer mode, 256x prescaler, constant follows
+
 int38		.EQU	38H
 nmi		.EQU	66H
 
@@ -182,58 +190,81 @@ boot:
 		LD	A,$01
 		OUT ($38),A
 
+		; Do not trust previous initialization....
+		; See monitor.asm for full comments.
+		LD 	A,CTC_STOP
+		OUT 	(CTC_CH0),A
+		OUT 	(CTC_CH1),A
+		; CTC channels 0 and 1 are set up to run as a 6-step counter
+		; This allows both SIO ports to be default-clocked at
+		; 115200 if J2/J3 are set to CPUclk, and 9600 if set to CTCclk
+		LD 	A,CTC_CMODE
+		OUT 	(CTC_CH0),A
+		LD	A,6
+		OUT 	(CTC_CH0),A
+		LD 	A,CTC_CMODE
+		OUT 	(CTC_CH1),A
+		LD	A,6
+		OUT 	(CTC_CH1),A
+		; CTC channel 2 is set up as a free-running 200Hz counter
+		; This is in-line with SCMonitor behaviour
+		LD 	A,CTC_TMODE
+		OUT 	(CTC_CH2),A
+		LD	A,144
+		OUT 	(CTC_CH2),A
+
 ;	Initialise SIO
+		LD	A,$00			; WR0
+		OUT	(SIOA_C),A
+		LD	A,$18			; Reset Channel
+		OUT	(SIOA_C),A
+
+		LD	A,$04			; WR4
+		OUT	(SIOA_C),A
+		LD	A,$C4			; x64, 1 stop bit
+		OUT	(SIOA_C),A
+
+		LD	A,$01			; WR1
+		OUT	(SIOA_C),A
+		LD	A,$18			; Int on ALL RX, vetor not modified
+		OUT	(SIOA_C),A
+
+		LD	A,$03			; WR3
+		OUT	(SIOA_C),A
+		LD	A,$E1			; 8bit/char. Auto enable. Receiver enable
+		OUT	(SIOA_C),A
 
 		LD	A,$00
-		OUT	(SIOA_C),A
+		OUT	(SIOB_C),A
 		LD	A,$18
-		OUT	(SIOA_C),A
+		OUT	(SIOB_C),A
 
 		LD	A,$04
-		OUT	(SIOA_C),A
+		OUT	(SIOB_C),A
 		LD	A,$C4
-		OUT	(SIOA_C),A
+		OUT	(SIOB_C),A
 
 		LD	A,$01
-		OUT	(SIOA_C),A
+		OUT	(SIOB_C),A
 		LD	A,$18
-		OUT	(SIOA_C),A
-	
+		OUT	(SIOB_C),A
+
 		LD	A,$03
-		OUT	(SIOA_C),A
+		OUT	(SIOB_C),A
 		LD	A,$E1
-		OUT	(SIOA_C),A
-
-		LD	A,$05
-		OUT	(SIOA_C),A
-		LD	A,RTS_LOW
-		OUT	(SIOA_C),A
-
-		LD	A,$00
-		OUT	(SIOB_C),A
-		LD	A,$18
 		OUT	(SIOB_C),A
 
-		LD	A,$04
-		OUT	(SIOB_C),A
-		LD	A,$C4
-		OUT	(SIOB_C),A
-
-		LD	A,$01
-		OUT	(SIOB_C),A
-		LD	A,$18
-		OUT	(SIOB_C),A
-
+		; Base init is done, time to swap interrupt handler
 		LD	A,$02
 		OUT	(SIOB_C),A
 		LD	A,$E0		; INTERRUPT VECTOR ADDRESS
 		OUT	(SIOB_C),A
 	
-		LD	A,$03
-		OUT	(SIOB_C),A
-		LD	A,$E1
-		OUT	(SIOB_C),A
-
+;		Ensure that RTS is LOW on both ports
+		LD	A,$05
+		OUT	(SIOA_C),A
+		LD	A,RTS_LOW
+		OUT	(SIOA_C),A
 		LD	A,$05
 		OUT	(SIOB_C),A
 		LD	A,RTS_LOW
@@ -245,7 +276,7 @@ boot:
 
 		CALL	printInline
 		.DB FF
-		.TEXT "Z80 CP/M BIOS 1.0 by G. Searle 2007-13"
+		.TEXT "LiNC80 CP/M BIOS 1.1+ by G. Searle 2007-18"
 		.DB CR,LF
 		.DB CR,LF
 		.TEXT "CP/M 2.2 "
@@ -1050,14 +1081,15 @@ wrByte:		LD 	A,(HL)
 ;================================================================================================
 ; Wait for disk to be ready (busy=0,ready=1)
 ;================================================================================================
+; Steve's TstBusy/TstReady version
+; see https://groups.google.com/forum/#!topic/rc2014-z80/FcLLSKSbRp4
 cfWait:
-		PUSH 	AF
-cfWait1:
-		in 	A,(CF_STATUS)
-		AND 	080H
-		cp 	080H
-		JR	Z,cfWait1
-		POP 	AF
+TstBusy:	IN   A,(CF_STATUS)  ;Read status register
+		BIT  7,A            ;Test Busy flag
+		JR   NZ,TstBusy    ;High so busy
+TstReady:	IN   A,(CF_STATUS)  ;Read status register
+		BIT  6,A            ;Test Ready flag
+		JR   Z,TstReady    ;Low so not Ready
 		RET
 
 ;================================================================================================
