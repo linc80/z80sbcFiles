@@ -903,15 +903,17 @@ rdByte:
 
 
 ; Wait for disk to be ready (busy=0,ready=1)
+; Steve's TstBusy/TstReady version
+; see https://groups.google.com/forum/#!topic/rc2014-z80/FcLLSKSbRp4
 cfWait:
-		PUSH 	AF
-cfWait1:
-		in 	A,(CF_STATUS)
-		AND 	080H
-		cp 	080H
-		JR	Z,cfWait1
-		POP 	AF
+TstBusy:	IN   A,(CF_STATUS)  ;Read status register
+		BIT  7,A            ;Test Busy flag
+		JR   NZ,TstBusy    ;High so busy
+TstReady:	IN   A,(CF_STATUS)  ;Read status register
+		BIT  6,A            ;Test Ready flag
+		JR   Z,TstReady    ;Low so not Ready
 		RET
+
 
 ;------------------------------------------------------------------------------
 
