@@ -39,6 +39,14 @@ SIOA_C		.EQU	$02
 SIOB_D		.EQU	$01
 SIOB_C		.EQU	$03
 
+CTC_CH0		.EQU	$08
+CTC_CH1		.EQU	$09
+CTC_CH2		.EQU	$0A
+CTC_CH3		.EQU	$0B
+CTC_STOP	.EQU	$03
+CTC_CMODE	.EQU	$55		; Counter mode, Constant follows
+CTC_TMODE	.EQU	$35		; Timer mode, 256x prescaler, constant follows
+
 int38		.EQU	38H
 nmi		.EQU	66H
 
@@ -174,10 +182,71 @@ boot:
 		LD	A,$01
 		OUT ($38),A
 
-;		SIO was previously initialized by monitor ROM,
-;		so all that's really needed here is to set a new
-;		interrupt vector address.
+		; Do not trust previous initialization....
+		; See monitor.asm for full comments.
+		LD 	A,CTC_STOP
+		OUT 	(CTC_CH0),A
+		OUT 	(CTC_CH1),A
+		; CTC channels 0 and 1 are set up to run as a 6-step counter
+		; This allows both SIO ports to be default-clocked at
+		; 115200 if J2/J3 are set to CPUclk, and 9600 if set to CTCclk
+		LD 	A,CTC_CMODE
+		OUT 	(CTC_CH0),A
+		LD	A,6
+		OUT 	(CTC_CH0),A
+		LD 	A,CTC_CMODE
+		OUT 	(CTC_CH1),A
+		LD	A,6
+		OUT 	(CTC_CH1),A
+		; CTC channel 2 is set up as a free-running 200Hz counter
+		; This is in-line with SCMonitor behaviour
+		LD 	A,CTC_TMODE
+		OUT 	(CTC_CH2),A
+		LD	A,144
+		OUT 	(CTC_CH2),A
 
+;	Initialise SIO
+		LD	A,$00			; WR0
+		OUT	(SIOA_C),A
+		LD	A,$18			; Reset Channel
+		OUT	(SIOA_C),A
+
+		LD	A,$04			; WR4
+		OUT	(SIOA_C),A
+		LD	A,$C4			; x64, 1 stop bit
+		OUT	(SIOA_C),A
+
+		LD	A,$01			; WR1
+		OUT	(SIOA_C),A
+		LD	A,$18			; Int on ALL RX, vetor not modified
+		OUT	(SIOA_C),A
+
+		LD	A,$03			; WR3
+		OUT	(SIOA_C),A
+		LD	A,$E1			; 8bit/char. Auto enable. Receiver enable
+		OUT	(SIOA_C),A
+
+		LD	A,$00
+		OUT	(SIOB_C),A
+		LD	A,$18
+		OUT	(SIOB_C),A
+
+		LD	A,$04
+		OUT	(SIOB_C),A
+		LD	A,$C4
+		OUT	(SIOB_C),A
+
+		LD	A,$01
+		OUT	(SIOB_C),A
+		LD	A,$18
+		OUT	(SIOB_C),A
+
+		LD	A,$03
+		OUT	(SIOB_C),A
+		LD	A,$E1
+		OUT	(SIOB_C),A
+
+		; Base init is done, time to swap interrupt handler
 		LD	A,$02
 		OUT	(SIOB_C),A
 		LD	A,$E0		; INTERRUPT VECTOR ADDRESS
@@ -188,11 +257,12 @@ boot:
 		OUT	(SIOA_C),A
 		LD	A,RTS_LOW
 		OUT	(SIOA_C),A
-
 		LD	A,$05
 		OUT	(SIOB_C),A
 		LD	A,RTS_LOW
 		OUT	(SIOB_C),A
+
+		; SIO and CTC init done!
 
 		; Interrupt vector in page FF
 		LD	A,$FF
