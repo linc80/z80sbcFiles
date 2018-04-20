@@ -31,6 +31,10 @@ TASM.EXE on a modern operating system, is to use DosBox.
 A few small utilities are included that work as wrappers for running
 DosBox execution of TASM.EXE.
 
+The TASM.EXE assembler is NOT included in the repository. You can find
+the assembler and related files in Grant Searle's original software
+distribution at http://searle.hostei.com/grant/cpm/z80sbcFiles.zip
+
 Files required for the GSL ROM page
 ------------------------------------
 
