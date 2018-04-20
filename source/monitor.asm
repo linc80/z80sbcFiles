@@ -956,13 +956,13 @@ HLPTXT
 
 ;------------------------------------------------------------------------------
 FHELP:	.ORG $3F00
-	.TEXT "BOOT    Start CP/M Loader (G.Searle ROM Monitor/Loader)"
+	.TEXT "GSL      Start G. Searle ROM Monitor/Loader"
 	.BYTE $0d,$0a
 FHEND:	.BYTE $00
 	
 	.ORG $3FE0
 FMARK:	.BYTE $55,$aa
-	.TEXT "BOOT    "
+	.TEXT "GSL     "
 	.BYTE $02
 	.BYTE $00
 	.BYTE $00,$00
