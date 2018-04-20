@@ -75,8 +75,11 @@ SIOB_C		.EQU	$03
 
 CTC_CH0		.EQU	$08
 CTC_CH1		.EQU	$09
+CTC_CH2		.EQU	$0A
+CTC_CH3		.EQU	$0B
 CTC_STOP	.EQU	$03
-CTC_CMODE	.EQU	$55
+CTC_CMODE	.EQU	$55		; Counter mode, Constant follows
+CTC_TMODE	.EQU	$35		; Timer mode, 256x prescaler, constant follows
 
 		.ORG	$4000
 serABuf		.ds	SER_BUFSIZE
@@ -403,18 +406,41 @@ INIT		LD   SP,STACK		; Set the Stack Pointer
 		LD	(serABufUsed),A
 		LD	(serBBufUsed),A
 
-;	Initialise CTC
+		; Initialise CTC
+		; Operation very much inspired by SMBaker's experiences
+		; CTC channel 0 runs the CTCclk for SIO port A
 		LD 	A,CTC_STOP
 		OUT 	(CTC_CH0),A
 		OUT 	(CTC_CH1),A
 
 		LD 	A,CTC_CMODE
 		OUT 	(CTC_CH0),A
-		LD 	A,24			; 2  = 115200, 4  = 57600, 
+		; The following values are correct if SIO uses x16 clkdiv
+		;LD 	A,24			; 2  = 115200, 4  = 57600, 
 						; 6  = 38400, 12 = 19200, 
 						; 24 = 9600, 48 = 4800, 
 						; 96 = 1200, 192 = 600
+
+		; When running SIO at x64 speed, the numbers above
+		; are simply 4x too high. So, 9600bps = 6, not 24:
+		LD	A,6
 		OUT 	(CTC_CH0),A
+
+		; Also initialize CTC channel 1 as a 6-step counter
+		; This allows both SIO ports to be default-clocked at
+		; 115200 if J2/J3 are set to CPUclk, and 9600 if set to CTCclk
+		LD 	A,CTC_CMODE
+		OUT 	(CTC_CH1),A
+		LD	A,6
+		OUT 	(CTC_CH1),A
+
+		; CTC channel 2 is set up as a free-running 200Hz counter
+		; This is in-line with SCMonitor behaviour
+		LD 	A,CTC_TMODE
+		OUT 	(CTC_CH2),A
+		LD	A,144
+		OUT 	(CTC_CH2),A
+
 
 ;	Initialise SIO
 
@@ -425,7 +451,10 @@ INIT		LD   SP,STACK		; Set the Stack Pointer
 
 		LD	A,$04			; WR4
 		OUT	(SIOA_C),A
-		LD	A,$44			; x16, 1 stop bit
+		; Changing from running at 16x
+		;LD	A,$44			; x16, 1 stop bit
+		; to running at 64x, to be compatible with defaults in scmonitor
+		LD	A,$C4			; x64, 1 stop bit
 		OUT	(SIOA_C),A
 
 		LD	A,$01			; WR1
@@ -886,7 +915,7 @@ cfWait1:
 
 ;------------------------------------------------------------------------------
 
-SIGNON	.BYTE	"Z80 SBC Boot ROM 1.1+"
+SIGNON	.BYTE	"LiNC80 SBC Boot ROM 1.1+"
 		.BYTE	" by G. Searle,"
 		.BYTE   " modified by J. Langseth"
 		.BYTE	$0D,$0A
@@ -924,6 +953,26 @@ HLPTXT
         	.BYTE   $00
 
 ;------------------------------------------------------------------------------
+FHELP:	.ORG $3F00
+	.TEXT "BOOT    Start CP/M Loader (G.Searle ROM Monitor/Loader)"
+	.BYTE $0d,$0a
+FHEND:	.BYTE $00
+	
+	.ORG $3FE0
+FMARK:	.BYTE $55,$aa
+	.TEXT "BOOT    "
+	.BYTE $02
+	.BYTE $00
+	.BYTE $00,$00
+	.BYTE $70,$3E
+
+	.BYTE $55,$aa
+	.TEXT "GSLoader"
+	.BYTE $03
+	.BYTE $00
+	.BYTE $00,$3F
+	.BYTE FHEND-FHELP+1
+	.BYTE $00
 
 FINIS		.END	
 
