@@ -1,0 +1,1 @@
+Directory for compiled HEX files. This file is a placeholder.
