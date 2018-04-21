@@ -5,7 +5,7 @@ In this repository you will not find the complete source tree for the software
 included in ROM and made available for use of CP/M via http://linc.no/go/linc80
 
 The LiNC80 SBC1 ships with the Small Computer Monitor written by
-Steven C Cousins as its primary operating environment.
+Stephen C Cousins as its primary operating environment.
  The source code, and tools needed to build it, are located at http://scc.me.uk
 
 The secondary ROM environment is a slight adjustment of Grant Searle's
@@ -18,7 +18,7 @@ NON COMMERCIAL USE ONLY, and redistribution is permitted only with attribution.
 
 The software in this repository is primarily the work of Grant Searle, with
 adaptations specific to the LiNC80 SBC1, and some changes by Jon Langseth
-and Steve C Cousins. Please visit http://searle.hostei.com/grant/index.html
+and Stephen C Cousins. Please visit http://searle.hostei.com/grant/index.html
 to locate the original code.
 
 Compiling code in this repository
